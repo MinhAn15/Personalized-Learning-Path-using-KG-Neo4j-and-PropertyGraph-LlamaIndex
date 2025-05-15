@@ -1,0 +1,87 @@
+Attached are the original document (e.g., Lecture 2.pdf), `node.csv`, and `relationship.csv`. Your task is to fully automate the validation and correction of these files against the document without manual intervention, ensuring compatibility with a Knowledge Graph (KG) for adaptive learning systems built in Neo4j Desktop. Follow these instructions to validate and standardize the data, aligning with the latest SPR Compression prompt specifications:
+
+#### **1. Node Validation**
+- For each node in `node.csv`, validate **all properties** (`Document_ID`, `Node_ID`, `Node_Label`, `Sanitized_Concept`, `Context`, `Definition`, `Example`, `Learning_Objective`, `Skill_Level`, `Time_Estimate`, `Difficulty`, `Priority`, `Prerequisites`, `Semantic_Tags`, `Focused_Semantic_Tags`, and any dynamic `Key_Property_X` and `Value_X` pairs) against the document content.
+- Assess the reasonableness of properties using the document and educational standards:
+  - **`Document_ID`**: Verify it uniquely identifies the document and matches metadata (e.g., filename like "BI_Lecture_2").
+  - **`Node_ID`**: Ensure format is `Node_Label:Sanitized_Concept` and unique across the KG.
+  - **`Node_Label`**: Confirm it is one of: "Concept", "Lesson", "Quiz", "Experiment", "Topic", "Resource", and aligns with the concept’s role in the document.
+  - **`Sanitized_Concept`**: Verify it is lowercase, snake_case, and matches the concept in the document.
+  - **`Context`**: Ensure it reflects the document’s domain/subdomain (e.g., "data_preprocessing" for a statistics section).
+  - **`Definition`**: Confirm it is concise, accurate, and directly extracted or inferred from the document.
+  - **`Example`**: Verify it is a clear, representative instance from the document or marked "Not Available" if absent.
+  - **`Learning_Objective`**: Ensure it is specific, aligns with the concept’s role, or marked "Not Available" if unclear.
+  - **`Skill_Level`**: Use Bloom’s Taxonomy ("Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create") to verify alignment with the document’s learning objectives or examples. For example, "Calculate the mean" should be "Apply", not "Remember".
+  - **`Time_Estimate`**: Ensure alignment with concept complexity: 5-15 min (simple), 15-30 min (moderate), 30-60 min (complex), based on document depth.
+  - **`Difficulty`**: Assign "STANDARD" for beginner-level concepts, "ADVANCED" for those requiring prior knowledge, validated by `Prerequisites` and document complexity.
+  - **`Priority`**: Assign 4-5 for foundational concepts (frequent in titles or prerequisites for many nodes), 1-2 for advanced/optional topics (infrequently mentioned).
+  - **`Prerequisites`**: Verify the list is comma-separated, matches document dependencies, or marked "Not Available" if absent.
+  - **`Semantic_Tags`**: Ensure at least **10 tags**, covering core meanings, related concepts, and interdisciplinary connections, validated by document frequency and educational ontologies (e.g., WordNet, DBpedia). Tags should reflect synonyms, contextual relevance, and broader connections.
+  - **`Focused_Semantic_Tags`**: Confirm 3-5 tags, a concise subset of `Semantic_Tags`, aligning with `Definition` and `Context`, or marked "Not Available" if insufficient context.
+  - **Dynamic Properties** (e.g., `Numerical_Data`, `Real_World_Application`): Verify they are supported by document content (e.g., from tables, "Applications" sections) and correctly formatted as key-value pairs.
+- Flag discrepancies and suggest corrections if a property is:
+  - Incorrect, unsupported by the document, or inconsistent with SPR extraction criteria (e.g., `Semantic_Tags` not meeting the minimum of 10 tags or not matching document frequency).
+
+#### **2. Relationship Validation**
+- For each relationship in `relationship.csv`, validate **all properties** (`Document_ID`, `Source_Node_ID`, `Relationship_Type`, `Target_Node_ID`, `Weight`, `Dependency`) against the document’s structure and content.
+- Assess reasonableness:
+  - **`Document_ID`**: Match with `node.csv` and document metadata.
+  - **`Source_Node_ID` and `Target_Node_ID`**: Ensure they exist in `node.csv` and are correctly referenced.
+  - **`Relationship_Type`**: Validate that types (`REQUIRES`, `IS_PREREQUISITE_OF`, `NEXT`, `REMEDIATES`, `HAS_ALTERNATIVE_PATH`, `SIMILAR_TO`, `IS_SUBCONCEPT_OF`) match document content or implied dependencies:
+    - `REQUIRES`: Source requires target (e.g., "Adaptive learning paths require recommender systems").
+    - `IS_PREREQUISITE_OF`: Inverse of `REQUIRES` (e.g., "recommender_systems is prerequisite for adaptive_learning_path").
+    - `NEXT`: Sequential order (e.g., "After mean, study median").
+    - `REMEDIATES`: Target addresses source difficulties (e.g., "statistics remediates hypothesis_testing").
+    - `HAS_ALTERNATIVE_PATH`: Target as alternative (e.g., "descriptive_statistics as alternative to hypothesis_testing").
+    - `SIMILAR_TO`: Semantic similarity (e.g., "mean similar to median").
+    - `IS_SUBCONCEPT_OF`: Hierarchical relationship (e.g., "critical_thinking_philosophy is a subconcept of critical_thinking").
+  - **`Weight`**: Assign 4-5 for critical relationships (e.g., `REQUIRES` for foundational prerequisites), 1-2 for less critical ones (e.g., `SIMILAR_TO` based on shared tags).
+  - **`Dependency`**: Assign 4-5 if the target is essential for the source (e.g., `REQUIRES` with strong evidence), 1-2 if weakly dependent or independent.
+- Flag discrepancies and suggest corrections if values are:
+  - Unreasonable, unsupported by the document, or misaligned with SPR relationship definitions.
+
+#### **3. Automation**
+- Process the entire `node.csv` and `relationship.csv` automatically, validating all rows and properties without batch instructions.
+- Assume full access to the document content and CSV files.
+- Use the SPR extraction criteria (e.g., frequency-based prioritization, Bloom’s Taxonomy, educational ontologies like WordNet/DBpedia) to ensure consistency with node and relationship generation.
+
+#### **4. Output**
+- **Detailed Report**: 
+  - For each node: `[Node_ID] - [Property] - [Correct/Incorrect] - [Reasoning] - [Suggested Correction if applicable]`
+    - Example: `[Node_ID: concept:mean] - [Definition: "The arithmetic average of a set of values."] - [Correct] - [Reasoning: Matches document content in Section 2.1]`.
+    - Example (error): `[Node_ID: concept:mean] - [Semantic_Tags: "mean;average;statistics"] - [Incorrect] - [Reasoning: Only 3 tags, below minimum of 10; missing related terms like 'central_tendency'] - [Suggested Correction: Semantic_Tags: "arithmetic_mean;average;central_tendency;data_analysis;descriptive_statistics;expected_value;finance;forecasting;mean;statistics"]`.
+  - For each relationship: `[Source_Node_ID -> Target_Node_ID] - [Relationship_Type] - [Property] - [Correct/Incorrect] - [Reasoning] - [Suggested Correction if applicable]`
+    - Example: `[Source_Node_ID: concept:critical_thinking_philosophy -> Target_Node_ID: concept:critical_thinking] - [Relationship_Type: IS_SUBCONCEPT_OF] - [Correct] - [Reasoning: Document states 'Philosophy’s critical thinking is a subset of general critical thinking']`.
+    - Example (error): `[Source_Node_ID: concept:mean -> Target_Node_ID: concept:median] - [Weight: 1] - [Incorrect] - [Reasoning: NEXT relationship is sequential and moderately important] - [Suggested Correction: Weight: 3]`.
+  - Summary: Total correct vs. incorrect entries for nodes and relationships.
+  - Quantitative analysis: Percentage of correct properties for nodes and relationships (e.g., "95% of node properties are correct").
+- **CSV Files**:
+  - **`validated_node.csv`**:
+    - A corrected version of `node.csv` where:
+      - Each node appears exactly once (no duplicates).
+      - All properties are updated based on validation results (apply `Suggested_Correction` directly to respective columns).
+    - Include two additional columns:
+      - `Validation_Status`: "Correct" if all properties are correct, "Updated" if any property was corrected.
+      - `Corrections_Applied`: List of corrections applied (e.g., "Skill_Level: Updated to 'Apply'; Semantic_Tags: Updated to include 10 tags"), blank if no corrections.
+  - **`validated_relationship.csv`**:
+    - A corrected version of `relationship.csv` where:
+      - Each relationship appears exactly once.
+      - All properties are updated based on validation results.
+    - Include two additional columns:
+      - `Validation_Status`: "Correct" or "Updated".
+      - `Corrections_Applied`: List of corrections applied (e.g., "Weight: Updated to 3; Dependency: Updated to 3"), blank if no corrections.
+  - Format CSV output as text, enclosed in double quotes, ready for code-based processing.
+
+#### **5. Interpretation and Justification**
+- For qualitative properties (e.g., `Skill_Level`, `Priority`, `Weight`, `Dependency`):
+  - Justify corrections based on document content, structure, and educational frameworks (e.g., Bloom’s Taxonomy for `Skill_Level`, document frequency for `Priority`, prerequisite relationships for `Weight` and `Dependency`).
+  - Use educational ontologies (e.g., WordNet, DBpedia) to validate `Semantic_Tags` (ensuring at least 10 tags) and `Focused_Semantic_Tags`.
+- Ensure corrections align with the SPR prompt’s control parameters (e.g., `temperature=0.1`, `seed=42`, `domain_hint="education"`) and extraction process (e.g., prioritizing frequent concepts, hierarchical relationships like `IS_SUBCONCEPT_OF`).
+
+#### **6. Automation Goal**
+- Enable a code-based loop to update `node.csv` and `relationship.csv` with corrected values and re-run validation until all `Validation_Status` entries are "Correct".
+
+#### **Execution**
+- Execute this process and return:
+  - The full report with quantitative results and explanations.
+  - The `validated_node.csv` and `validated_relationship.csv` files as CSV-formatted text.
